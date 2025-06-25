@@ -1,13 +1,13 @@
+
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.ExperimentalAnimationApi
-import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -19,8 +19,6 @@ import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.Text
-import androidx.compose.material.TopAppBar
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
@@ -44,25 +42,18 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
 import androidx.compose.ui.window.rememberWindowState
+import io.ktor.client.*
+import io.ktor.client.plugins.websocket.*
 import io.ktor.server.application.*
 import io.ktor.server.engine.*
-import io.ktor.server.engine.ApplicationEngine
-import io.ktor.server.engine.embeddedServer
 import io.ktor.server.netty.*
-import io.ktor.server.netty.Netty
-import io.ktor.server.routing.routing
+import io.ktor.server.routing.*
 import io.ktor.server.websocket.*
-import io.ktor.server.websocket.WebSockets
-import io.ktor.server.websocket.webSocket
 import io.ktor.websocket.*
-import io.ktor.websocket.Frame
-import io.ktor.websocket.readText
 import kotlinx.coroutines.*
-import kotlinx.coroutines.launch
 import java.awt.FileDialog
 import java.net.InetAddress
 import java.util.concurrent.ConcurrentHashMap
-
 
 /**
  * Data class to represent a file item in our list.
@@ -79,8 +70,6 @@ data class FileItem(
  * It sets up the Material Design theme, a Modal Navigation Drawer,
  * a Scaffold with a TopAppBar, and displays different screens based on navigation selection.
  */
-
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun App() {
@@ -111,8 +100,7 @@ fun App() {
         ) {
             Scaffold(
                 topBar = {
-                    // CONDITIONALLY RENDER THE MAIN APP TOP APP BAR
-                    if (currentScreen != "Send" && currentScreen != "Settings" && currentScreen != "Profile") { // Only show if not on the SendScreen
+                    if (currentScreen != "Send" && currentScreen != "Settings" && currentScreen != "Profile") {
                         TopAppBar(
                             title = { Text("Dashboard", style = MaterialTheme.typography.headlineSmall) },
                             navigationIcon = {
@@ -144,15 +132,12 @@ fun App() {
                         "Home" -> HomeScreen(
                             onNavigateToSend = { currentScreen = "Send" }
                         )
-
                         "Send" -> SendScreen(
                             onNavigateBack = { currentScreen = "Home" }
                         )
-                        //"Settings" -> Text("Settings Screen", style = MaterialTheme.typography.bodyLarge)
                         "Settings" -> SettingScreen(
                             onNavigateBack = { currentScreen = "Home" }
                         )
-
                         "Profile" -> ProfileScreen(
                             onNavigateBack = { currentScreen = "Home" }
                         )
@@ -166,21 +151,15 @@ fun App() {
 /**
  * Composable function for the content of the navigation drawer.
  * Displays a list of navigation items.
- *
- * @param selectedScreen The currently selected screen, used to highlight the active item.
- * @param onScreenSelected Callback function invoked when a navigation item is clicked.
  */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DrawerContent(selectedScreen: String, onScreenSelected: (String) -> Unit) {
     Column(
         modifier = Modifier
             .width(250.dp)
             .fillMaxHeight()
-            //.padding(16.dp) tool bar padding
             .background(MaterialTheme.colorScheme.surface)
     ) {
-        // "Menu" text removed as per previous request
         NavigationDrawerItem(
             icon = { Icon(Icons.Default.Home, contentDescription = null) },
             label = { Text("Home") },
@@ -219,18 +198,12 @@ fun DrawerContent(selectedScreen: String, onScreenSelected: (String) -> Unit) {
 
 /**
  * Composable function for the Home Screen, demonstrating a TabRow with HorizontalPager.
- * It now includes a Floating Action Button on "Tab 1" and toggles two circular buttons with slide animations.
- * @param onNavigateToSend Callback to navigate to the SendScreen.
  */
-@OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class, ExperimentalAnimationApi::class)
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun HomeScreen(onNavigateToSend: () -> Unit) {
     val tabs = listOf("Tab 1", "Tab 2", "Tab 3", "Tab 4")
-    val pagerState = rememberPagerState(
-        initialPage = 0,
-        initialPageOffsetFraction = 0f,
-        pageCount = { tabs.size }
-    )
+    val pagerState = rememberPagerState(pageCount = { tabs.size })
     val scope = rememberCoroutineScope()
 
     var showCircles by remember { mutableStateOf(false) }
@@ -282,7 +255,6 @@ fun HomeScreen(onNavigateToSend: () -> Unit) {
                         horizontalArrangement = Arrangement.SpaceEvenly,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        // Send Circle (Deep Green) with slide-in from top
                         AnimatedVisibility(
                             visible = showCircles,
                             enter = slideInVertically { -it } + fadeIn(),
@@ -314,7 +286,6 @@ fun HomeScreen(onNavigateToSend: () -> Unit) {
 
                         Spacer(modifier = Modifier.width(16.dp))
 
-                        // Receive Circle (Light Blue) with slide-in from bottom
                         AnimatedVisibility(
                             visible = showCircles,
                             enter = slideInVertically { it } + fadeIn(),
@@ -326,7 +297,7 @@ fun HomeScreen(onNavigateToSend: () -> Unit) {
                                         .size(140.dp)
                                         .clip(CircleShape)
                                         .background(Color(0xFFADD8E6))
-                                        .clickable { /* Handle Receive click */ println("Receive clicked!") },
+                                        .clickable { println("Receive clicked!") },
                                     contentAlignment = Alignment.Center
                                 ) {
                                     Icon(
@@ -347,393 +318,59 @@ fun HomeScreen(onNavigateToSend: () -> Unit) {
     }
 }
 
-@OptIn()
+/**
+ * Composable for the Settings Screen.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingScreen(onNavigateBack: () -> Unit) {
-
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text("Settings", style = MaterialTheme.typography.headlineSmall) },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "back icon")
+                        Icon(Icons.Default.ArrowBack, contentDescription = "Back icon")
                     }
                 },
-
-                )
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    titleContentColor = MaterialTheme.colorScheme.onPrimary,
+                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimary
+                ),
+                modifier = Modifier.shadow(4.dp)
+            )
+        },
+        containerColor = MaterialTheme.colorScheme.background
+    ) { innerPadding ->
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding),
+            contentAlignment = Alignment.Center
+        ) {
+            Text("Settings Screen", style = MaterialTheme.typography.bodyLarge)
         }
-
-    ) {
-
-        // Space for Settings Screen
     }
 }
 
-/*@Composable
-fun ProfileScreen(onNavigateBack: () -> Unit){
-
-
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Profile" , style = MaterialTheme.typography.headlineSmall)},
-                navigationIcon = {
-                    IconButton(onClick = onNavigateBack){
-                        Icon(Icons.Default.ArrowBack,"back Icon")
-                    }
-                }
-            )
-        }
-
-    ){
-
-        // Space for Profile Screen
-    }
-}*/
-
-
-/*@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun ProfileScreen(onNavigateBack: () -> Unit) {
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Profile", style = MaterialTheme.typography.headlineSmall) },
-                navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back Icon")
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimary,
-                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimary
-                ),
-                modifier = Modifier.shadow(4.dp)
-            )
-        },
-        containerColor = MaterialTheme.colorScheme.background
-    ) { innerPadding ->
-        Row(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-                .padding(horizontal = 20.dp),
-            horizontalArrangement = Arrangement.spacedBy(20.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            // Left Box (50% width)
-            Box(
-                modifier = Modifier
-                    .weight(0.5f)
-                    .fillMaxHeight()
-                    .padding(vertical = 5.dp)
-                    .clip(RoundedCornerShape(5.dp))
-                    .background(Color.LightGray),
-                contentAlignment = Alignment.Center
-            ) {
-                // Placeholder content
-                Text(
-                    text = "Left Section",
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = Color.Gray
-                )
-            }
-
-            // Right Box (50% width)
-            Box(
-                modifier = Modifier
-                    .weight(0.5f)
-                    .fillMaxHeight()
-                    .padding(vertical = 5.dp)
-                    .clip(RoundedCornerShape(5.dp))
-                    .background(Color.LightGray),
-                contentAlignment = Alignment.Center
-            ) {
-                // Placeholder content
-                Text(
-                    text = "Right Section",
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = Color.Gray
-                )
-            }
-        }
-    }
-}*/
-
-
-/*@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun ProfileScreen(onNavigateBack: () -> Unit) {
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Profile", style = MaterialTheme.typography.headlineSmall) },
-                navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back Icon")
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimary,
-                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimary
-                ),
-                modifier = Modifier.shadow(4.dp)
-            )
-        },
-        containerColor = MaterialTheme.colorScheme.background
-    ) { innerPadding ->
-        Row(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-                .padding(horizontal = 20.dp),
-            horizontalArrangement = Arrangement.spacedBy(20.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            // Left Box (50% width)
-            Box(
-                modifier = Modifier
-                    .weight(0.5f)
-                    .fillMaxHeight()
-                    .padding(vertical = 5.dp)
-                    .clip(RoundedCornerShape(5.dp))
-                    .background(Color.LightGray),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = "Left Section",
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = Color.Gray
-                )
-            }
-
-            // Right Section (50% width, divided vertically)
-            Column(
-                modifier = Modifier
-                    .weight(0.5f)
-                    .fillMaxHeight()
-                    .padding(vertical = 5.dp),
-                verticalArrangement = Arrangement.spacedBy(20.dp)
-            ) {
-                // Top Box (50% height)
-                Box(
-                    modifier = Modifier
-                        .weight(0.5f)
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(5.dp))
-                        .background(Color.LightGray),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = "Top Right Section",
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = Color.Gray
-                    )
-                }
-
-                // Bottom Box (50% height)
-                Box(
-                    modifier = Modifier
-                        .weight(0.5f)
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(5.dp))
-                        .background(Color.LightGray),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = "Bottom Right Section",
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = Color.Gray
-                    )
-                }
-            }
-        }
-    }
-}*/
-
-
-/*@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun ProfileScreen(onNavigateBack: () -> Unit) {
-    // State to manage WebSocket server
-    var serverStatus by remember { mutableStateOf("Server Stopped") }
-    var receivedMessage by remember { mutableStateOf("") }
-    var server: ApplicationEngine? by remember { mutableStateOf(null) }
-    val scope = rememberCoroutineScope()
-
-    // Function to start the WebSocket server
-    fun startWebSocketServer() {
-        server?.stop() // Stop any existing server
-        server = embeddedServer(Netty, port = 8080, host = "0.0.0.0") {
-            install(WebSockets)
-            routing {
-                webSocket("/receiver") {
-                    serverStatus = "Server Started on ${InetAddress.getLocalHost().hostAddress}:8080"
-                    try {
-                        for (frame in incoming) {
-                            when (frame) {
-                                is Frame.Text -> {
-                                    val text = frame.readText()
-                                    receivedMessage = "Received: $text"
-                                    send(Frame.Text("Echo: $text"))
-                                }
-                                else -> {
-                                    // Ignore non-text frames for simplicity
-                                }
-                            }
-                        }
-                    } finally {
-                        serverStatus = "Server Stopped"
-                        receivedMessage = ""
-                    }
-                }
-            }
-        }.start(wait = false)
-    }
-
-    // Function to stop the WebSocket server
-    fun stopWebSocketServer() {
-        server?.stop(gracePeriodMillis = 1000, timeoutMillis = 1000)
-        server = null
-        serverStatus = "Server Stopped"
-        receivedMessage = ""
-    }
-
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Profile", style = MaterialTheme.typography.headlineSmall) },
-                navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back Icon")
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimary,
-                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimary
-                ),
-                modifier = Modifier.shadow(4.dp)
-            )
-        },
-        containerColor = MaterialTheme.colorScheme.background
-    ) { innerPadding ->
-        Row(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-                .padding(horizontal = 20.dp),
-            horizontalArrangement = Arrangement.spacedBy(20.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            // Left Box (50% width)
-            Box(
-                modifier = Modifier
-                    .weight(0.5f)
-                    .fillMaxHeight()
-                    .padding(vertical = 5.dp)
-                    .clip(RoundedCornerShape(5.dp))
-                    .background(Color.LightGray),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = "Left Section",
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = Color.Gray
-                )
-            }
-
-            // Right Section (50% width, divided vertically)
-            Column(
-                modifier = Modifier
-                    .weight(0.5f)
-                    .fillMaxHeight()
-                    .padding(vertical = 5.dp),
-                verticalArrangement = Arrangement.spacedBy(20.dp)
-            ) {
-                // Top Box (50% height) - Search for Receiver Button
-                Box(
-                    modifier = Modifier
-                        .weight(0.5f)
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(5.dp))
-                        .background(Color.LightGray),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Button(
-                        onClick = {
-                            scope.launch {
-                                if Arrays.asList([serverStatus, receivedMessage])
-                                if (server == null) {
-                                    startWebSocketServer()
-                                } else {
-                                    stopWebSocketServer()
-                                }
-                            }
-                        },
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.primary
-                        )
-                    ) {
-                        Text(
-                            text = if (server == null) "Search for Receiver" else "Stop Server",
-                            color = MaterialTheme.colorScheme.onPrimary
-                        )
-                    }
-                }
-
-                // Bottom Box (50% height) - Server Status and Messages
-                Box(
-                    modifier = Modifier
-                        .weight(0.5f)
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(5.dp))
-                        .background(Color.LightGray),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.Center
-                    ) {
-                        Text(
-                            text = serverStatus,
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = Color.Gray
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        if (receivedMessage.isNotEmpty()) {
-                            Text(
-                                text = receivedMessage,
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = Color.Black
-                            )
-                        }
-                    }
-                }
-            }
-        }
-    }
-}*/
-
-
+/**
+ * Composable for the Profile Screen with WebSocket server and client.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProfileScreen(onNavigateBack: () -> Unit) {
-    // State to manage WebSocket server
     var serverStatus by remember { mutableStateOf("Server Stopped") }
     var server: ApplicationEngine? by remember { mutableStateOf(null) }
     val connectedDevices = remember { mutableStateListOf<String>() }
     val statusMessages = remember { mutableStateListOf<String>() }
-    val scope = rememberCoroutineScope()
     val clientSessions = ConcurrentHashMap<String, DefaultWebSocketServerSession>()
-
-    // App-specific identifier for authentication
+    var clientStatus by remember { mutableStateOf("Disconnected from mobile server") }
+    var mobileIp by remember { mutableStateOf("") }
+    var client: HttpClient? by remember { mutableStateOf(null) }
+    val scope = rememberCoroutineScope()
     val APP_IDENTIFIER = "MY_STUDIO_APP"
 
-    // Function to get the local IP address for the Wi-Fi hotspot
     fun getLocalIpAddress(): String {
         try {
             return InetAddress.getLocalHost().hostAddress
@@ -742,7 +379,6 @@ fun ProfileScreen(onNavigateBack: () -> Unit) {
         }
     }
 
-    // Function to send a pairing request to a specific device
     fun sendPairingRequest(deviceId: String) {
         scope.launch {
             clientSessions[deviceId]?.let { session ->
@@ -756,46 +392,33 @@ fun ProfileScreen(onNavigateBack: () -> Unit) {
         }
     }
 
-    // Function to start the WebSocket server
     fun startWebSocketServer() {
-        server?.stop(gracePeriodMillis = 1000, timeoutMillis = 1000) // Stop any existing server
+        server?.stop(gracePeriodMillis = 1000, timeoutMillis = 1000)
         try {
             server = embeddedServer(Netty, port = 8080, host = "0.0.0.0") {
-                install(WebSockets)
+                install(io.ktor.server.websocket.WebSockets)
                 routing {
                     webSocket("/receiver") {
                         val sessionId = "device-${System.currentTimeMillis()}-${(1000..9999).random()}"
                         statusMessages.add("Connection attempt from a device")
                         try {
-                            // Wait for the client to send the app identifier
                             val firstFrame = incoming.receive()
                             if (firstFrame is Frame.Text && firstFrame.readText() == APP_IDENTIFIER) {
-                                // Client authenticated
                                 clientSessions[sessionId] = this
                                 connectedDevices.add(sessionId)
-                                serverStatus =
-                                    "Server Started on ${getLocalIpAddress()}:8080 (${connectedDevices.size} device(s) connected)"
+                                serverStatus = "Server Started on ${getLocalIpAddress()}:8080 (${connectedDevices.size} device(s) connected)"
                                 statusMessages.add("Device $sessionId connected")
                                 send(Frame.Text("Authenticated: Welcome, $sessionId"))
-
-                                // Listen for further messages
                                 for (frame in incoming) {
-                                    when (frame) {
-                                        is Frame.Text -> {
-                                            val text = frame.readText()
-                                            statusMessages.add("[$sessionId]: $text")
-                                            send(Frame.Text("Echo: $text"))
-                                        }
-
-                                        else -> {
-                                            // Ignore non-text frames
-                                        }
+                                    if (frame is Frame.Text) {
+                                        val text = frame.readText()
+                                        statusMessages.add("[$sessionId]: $text")
+                                        send(Frame.Text("Echo: $text"))
                                     }
                                 }
                             } else {
-                                // Invalid identifier, close connection
-                                statusMessages.add("Invalid app identifier from a device")
-                                close(CloseReason(CloseReason.Codes.VIOLATED_POLICY, "Invalid app identifier"))
+                                statusMessages.add("Invalid identifier from a device")
+                                close(CloseReason(CloseReason.Codes.VIOLATED_POLICY, "Invalid identifier"))
                             }
                         } catch (e: Exception) {
                             statusMessages.add("Error with $sessionId: ${e.message}")
@@ -821,7 +444,6 @@ fun ProfileScreen(onNavigateBack: () -> Unit) {
         }
     }
 
-    // Function to stop the WebSocket server
     fun stopWebSocketServer() {
         server?.stop(gracePeriodMillis = 1000, timeoutMillis = 1000)
         server = null
@@ -830,6 +452,51 @@ fun ProfileScreen(onNavigateBack: () -> Unit) {
         clientSessions.clear()
         serverStatus = "Server Stopped"
         statusMessages.add("WebSocket server stopped")
+    }
+
+    fun startWebSocketClient(ip: String) {
+        if (ip.isBlank()) {
+            statusMessages.add("Please enter a valid mobile IP address")
+            return
+        }
+        client?.close()
+        client = HttpClient(io.ktor.client.engine.cio.CIO) {
+            install(io.ktor.client.plugins.websocket.WebSockets)
+        }
+        scope.launch {
+            try {
+                client!!.webSocket(urlString = "ws://$ip:8081/receiver") {
+                    clientStatus = "Connected to mobile server at $ip:8081"
+                    statusMessages.add("Connected to mobile server at $ip:8081")
+                    send(Frame.Text(APP_IDENTIFIER))
+                    for (frame in incoming) {
+                        if (frame is Frame.Text) {
+                            val text = frame.readText()
+                            statusMessages.add("Mobile server: $text")
+                            if (text == "PAIR_REQUEST") {
+                                statusMessages.add("Received pairing request from mobile")
+                                send(Frame.Text("PAIR_RESPONSE"))
+                            }
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                clientStatus = "Failed to connect to mobile server: ${e.message}"
+                statusMessages.add("Client error: ${e.message}")
+            } finally {
+                client?.close()
+                client = null
+                clientStatus = "Disconnected from mobile server"
+                statusMessages.add("Disconnected from mobile server")
+            }
+        }
+    }
+
+    fun stopWebSocketClient() {
+        client?.close()
+        client = null
+        clientStatus = "Disconnected from mobile server"
+        statusMessages.add("WebSocket client stopped")
     }
 
     Scaffold(
@@ -859,7 +526,6 @@ fun ProfileScreen(onNavigateBack: () -> Unit) {
             horizontalArrangement = Arrangement.spacedBy(20.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Left Box (50% width)
             Box(
                 modifier = Modifier
                     .weight(0.5f)
@@ -869,14 +535,46 @@ fun ProfileScreen(onNavigateBack: () -> Unit) {
                     .background(Color.LightGray),
                 contentAlignment = Alignment.Center
             ) {
-                Text(
-                    text = "Left Section",
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = Color.Gray
-                )
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    Text(
+                        text = "Connect to Mobile Server",
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = Color.Gray
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    OutlinedTextField(
+                        value = mobileIp,
+                        onValueChange = { mobileIp = it },
+                        label = { Text("Mobile IP Address") },
+                        modifier = Modifier.fillMaxWidth(0.8f)
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Button(
+                        onClick = {
+                            scope.launch {
+                                if (client == null) {
+                                    startWebSocketClient(mobileIp)
+                                } else {
+                                    stopWebSocketClient()
+                                }
+                            }
+                        },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.primary
+                        )
+                    ) {
+                        Text(
+                            text = if (client == null) "Connect" else "Disconnect",
+                            color = MaterialTheme.colorScheme.onPrimary
+                        )
+                    }
+                }
             }
 
-            // Right Section (50% width, divided vertically)
             Column(
                 modifier = Modifier
                     .weight(0.5f)
@@ -884,7 +582,6 @@ fun ProfileScreen(onNavigateBack: () -> Unit) {
                     .padding(vertical = 5.dp),
                 verticalArrangement = Arrangement.spacedBy(20.dp)
             ) {
-                // Top Box (50% height) - Search for Receiver Button
                 Box(
                     modifier = Modifier
                         .weight(0.5f)
@@ -914,7 +611,6 @@ fun ProfileScreen(onNavigateBack: () -> Unit) {
                     }
                 }
 
-                // Bottom Box (50% height) - Server Status, Connected Devices, and Messages
                 Box(
                     modifier = Modifier
                         .weight(0.5f)
@@ -932,6 +628,12 @@ fun ProfileScreen(onNavigateBack: () -> Unit) {
                     ) {
                         Text(
                             text = serverStatus,
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = Color.Gray
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = clientStatus,
                             style = MaterialTheme.typography.bodyLarge,
                             color = Color.Gray
                         )
@@ -992,18 +694,14 @@ fun ProfileScreen(onNavigateBack: () -> Unit) {
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalAnimationApi::class)
+/**
+ * Composable for the Send Screen with file selection.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SendScreen(onNavigateBack: () -> Unit) {
-    // State to hold the list of file items
-
-    val fileItems = remember {
-        mutableStateListOf<FileItem>()
-    }
-
-    // State to track the selected file for expansion
+    val fileItems = remember { mutableStateListOf<FileItem>() }
     var selectedFileId by remember { mutableStateOf<String?>(null) }
-
 
     Scaffold(
         topBar = {
@@ -1032,7 +730,6 @@ fun SendScreen(onNavigateBack: () -> Unit) {
             horizontalArrangement = Arrangement.spacedBy(20.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Left Rectangle (30% width) - File List with Expandable Details
             Box(
                 modifier = Modifier
                     .weight(0.3f)
@@ -1062,7 +759,6 @@ fun SendScreen(onNavigateBack: () -> Unit) {
                 }
             }
 
-            // Right Rectangle (70% width) - File Chooser Area
             Box(
                 modifier = Modifier
                     .weight(0.7f)
@@ -1090,7 +786,6 @@ fun SendScreen(onNavigateBack: () -> Unit) {
                         }
                     }
             ) {
-                // Inner bordered area
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
@@ -1121,7 +816,9 @@ fun SendScreen(onNavigateBack: () -> Unit) {
     }
 }
 
-
+/**
+ * Composable for a single item in the file list.
+ */
 @Composable
 fun FileListItem(
     item: FileItem,
@@ -1136,7 +833,6 @@ fun FileListItem(
             .clip(RoundedCornerShape(4.dp))
             .padding(horizontal = 8.dp)
     ) {
-        // File Item Row
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -1146,25 +842,19 @@ fun FileListItem(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            // Left: Icon
             Icon(
                 imageVector = item.icon,
                 contentDescription = null,
                 modifier = Modifier.size(24.dp),
                 tint = MaterialTheme.colorScheme.primary
             )
-
             Spacer(modifier = Modifier.width(8.dp))
-
-            // Middle: File Name and Size
             Column(
                 modifier = Modifier.weight(1f)
             ) {
                 Text(item.name, style = MaterialTheme.typography.bodyMedium, maxLines = 1)
                 Text(item.size, style = MaterialTheme.typography.bodySmall, color = Color.Gray)
             }
-
-            // Right: Delete Icon
             IconButton(
                 onClick = { onDeleteClick(item) },
                 modifier = Modifier.size(32.dp)
@@ -1177,15 +867,12 @@ fun FileListItem(
             }
         }
 
-        // Expandable Details Section
         AnimatedVisibility(
             visible = isExpanded,
-            // Expand from the bottom of the item
             enter = expandVertically(
                 expandFrom = Alignment.Bottom,
                 animationSpec = tween(durationMillis = 400, easing = FastOutSlowInEasing)
             ) + fadeIn(animationSpec = tween(durationMillis = 400)),
-            // Shrink back towards the bottom of the item
             exit = shrinkVertically(
                 shrinkTowards = Alignment.Bottom,
                 animationSpec = tween(durationMillis = 400, easing = FastOutSlowInEasing)
@@ -1219,7 +906,7 @@ fun FileListItem(
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 Button(
-                    onClick = { /* Simulate sending file */ println("Sending ${item.name}") },
+                    onClick = { println("Sending ${item.name}") },
                     colors = ButtonDefaults.buttonColors(
                         containerColor = MaterialTheme.colorScheme.primary
                     )
@@ -1231,16 +918,9 @@ fun FileListItem(
         }
     }
 }
-/**
- * Composable for a single item in the file list.
- * @param item The FileItem data to display.
- * @param onDeleteClick Callback when the delete icon is clicked.
- */
-
 
 /**
  * Main entry point for the Compose Desktop application.
- * Creates a desktop window and hosts the App Composable.
  */
 fun main() = application {
     Window(
